@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Packing Planner</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap');
+
+:root{
+  --bg:#EFF2F0;
+  --card:#FFFFFF;
+  --ink:#252A28;
+  --muted:#828F8A;
+  --line:#E1E6E3;
+  --teal:#1F5E54;
+  --teal-soft:#E3EFEC;
+  --amber:#D99A33;
+  --amber-soft:#FBF1DE;
+  --red:#C0463C;
+  --radius:16px;
+  --font-display:'Space Grotesk', system-ui, sans-serif;
+  --font-body:'Inter', system-ui, sans-serif;
+  --font-mono:'IBM Plex Mono', monospace;
+
+  /* label color palette, cycled through for each label */
+  --l0:#1F5E54;
+  --l1:#C77B2E;
+  --l2:#5E9C7A;
+  --l3:#5C7AA8;
+  --l4:#B5654A;
+  --l5:#8868A6;
+}
+
+*{ box-sizing:border-box; }
+
+body{
+  margin:0;
+  font-family:var(--font-body);
+  background:var(--bg);
+  color:var(--ink);
+  padding:28px 20px 60px;
+  -webkit-font-smoothing:antialiased;
+}
+
+button:focus-visible, input:focus-visible, select:focus-visible, [contenteditable]:focus-visible{
+  outline:2px solid var(--teal);
+  outline-offset:2px;
+}
+
+/* Top bar */
+.topbar{
+  max-width:1100px;
+  margin:0 auto 24px;
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:16px;
+  flex-wrap:wrap;
+}
+.topbar h1{
+  font-family:var(--font-display);
+  font-size:28px;
+  margin:0;
+  letter-spacing:-0.02em;
+}
+.topbar p{
+  margin:6px 0 0;
+  color:var(--muted);
+  font-size:14px;
+  max-width:56ch;
+}
+.topbar-actions{ display:flex; gap:8px; flex-wrap:wrap; }
+.btn{
+  font-family:var(--font-body);
+  font-size:13px;
+  font-weight:600;
+  border:1px solid var(--line);
+  background:var(--card);
+  color:var(--ink);
+  padding:9px 16px;
+  border-radius:10px;
+  cursor:pointer;
+  transition:border-color .15s, color .15s;
+}
+.btn:hover{ border-color:var(--teal); color:var(--teal); }
+
+/* shared page sections */
+.page{
+  max-width:1100px;
+  margin:0 auto;
+  display:flex;
+  flex-direction:column;
+  gap:20px;
+}
+
+.card{
+  position:relative;
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  padding:22px;
+  box-shadow:0 1px 3px rgba(20,30,28,0.04);
+}
+.card::before{
+  content:'';
+  position:absolute;
+  top:-9px; left:26px;
+  width:16px; height:16px;
+  border-radius:50%;
+  background:var(--bg);
+  border:1px solid var(--line);
+}
+.card.accent-amber{ border-top:4px solid var(--amber); }
+.card.accent-teal{ border-top:4px solid var(--teal); }
+
+/* Top Add New Item Form Custom Styling */
+.add-item-card-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.add-item-input {
+  flex: 1;
+  min-width: 260px;
+  border: 1px solid var(--line);
+  background: #fff;
+  font-family: var(--font-body);
+  font-size: 14px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  outline: none;
+}
+.add-item-input:focus {
+  border-color: var(--teal);
+}
+.add-item-labels-title {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-top: 14px;
+  margin-bottom: 8px;
+}
+.add-item-labels-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.add-chip-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: 1px dashed var(--line);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.add-chip-toggle.active {
+  background: var(--bg);
+  border-style: solid;
+  color: var(--ink);
+}
+
+/* Discord Style Context Menu Styling */
+.discord-menu {
+  position: fixed;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(20,30,28,0.15);
+  padding: 6px;
+  min-width: 190px;
+  z-index: 10000;
+}
+.discord-menu-title {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 6px 8px 4px;
+  letter-spacing: 0.05em;
+}
+.discord-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  font-size: 13px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.discord-menu-item:hover {
+  background: var(--bg);
+}
+.discord-menu-check {
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: bold;
+  border: 1px solid var(--muted);
+  border-radius: 3px;
+  color: transparent;
+}
+.discord-menu-item.active .discord-menu-check {
+  background: var(--teal);
+  border-color: var(--teal);
+  color: white;
+}
+.discord-menu-color {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.card-head{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  flex-wrap:wrap;
+  margin-bottom:16px;
+}
+.card-title{
+  font-family:var(--font-display);
+  font-size:20px;
+  font-weight:600;
+  margin:0;
+  flex:1;
+  min-width:160px;
+  padding:3px 7px;
+  margin-left:-7px;
+  border-radius:6px;
+  outline:none;
+}
+
+.progress-pill{
+  font-family:var(--font-mono);
+  font-size:12px;
+  font-weight:500;
+  background:var(--teal-soft);
+  color:var(--teal);
+  padding:5px 12px;
+  border-radius:999px;
+  white-space:nowrap;
+}
+.progress-pill.amber{ background:var(--amber-soft); color:#9C6E1F; }
+
+.icon-btn{
+  border:none;
+  background:transparent;
+  color:var(--muted);
+  cursor:pointer;
+  font-size:16px;
+  line-height:1;
+  padding:5px;
+  border-radius:6px;
+  display:flex;
+  align-items:center;
+}
+.icon-btn:hover{ color:var(--red); background:#FBEAE8; }
+
+/* Shopping list */
+.shopping-sections{ display:flex; flex-direction:column; gap:16px; }
+.shopping-group-title{
+  font-family:var(--font-mono);
+  font-size:11px;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+  color:var(--muted);
+  margin-bottom:6px;
+}
+
+/* Labels manager */
+.labels-title{
+  font-family:var(--font-display);
+  font-size:14px;
+  font-weight:600;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+  color:var(--muted);
+  margin-bottom:12px;
+}
+.labels-row{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+.label-chip{
+  display:flex;
+  align-items:center;
+  gap:2px;
+  background:var(--bg);
+  border-radius:999px;
+  padding:5px 6px 5px 12px;
+  border-left:4px solid var(--l0);
+}
+.label-name{
+  font-family:var(--font-body);
+  font-size:13px;
+  font-weight:600;
+  outline:none;
+  padding:2px 5px;
+  border-radius:4px;
+}
+.label-name:focus{ background:#fff; }
+.chip-del{
+  border:none; background:transparent; color:var(--muted); cursor:pointer;
+  font-size:13px; padding:4px 7px; border-radius:50%;
+}
+.chip-del:hover{ color:var(--red); background:#FBEAE8; }
+.add-label-btn{
+  border:1.5px dashed var(--line);
+  background:transparent;
+  color:var(--muted);
+  font-family:var(--font-body);
+  font-weight:600;
+  font-size:13px;
+  padding:8px 16px;
+  border-radius:999px;
+  cursor:pointer;
+  transition:border-color .15s, color .15s;
+}
+.add-label-btn:hover{ border-color:var(--teal); color:var(--teal); }
+
+/* Group cards (the big lists) */
+.sublists{
+  display:flex;
+  gap:14px;
+  flex-wrap:wrap;
+}
+.sublist{
+  flex:1 1 240px;
+  min-width:220px;
+  background:var(--bg);
+  border-left:3px solid var(--l0);
+  border-radius:10px;
+  padding:13px 14px;
+}
+.sublist-head{ display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+.sublist-title{
+  font-family:var(--font-display);
+  font-size:13px;
+  font-weight:600;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+  flex:1;
+}
+.count-badge{
+  font-family:var(--font-mono);
+  font-size:11px;
+  color:var(--muted);
+  background:#fff;
+  padding:2px 8px;
+  border-radius:999px;
+  border:1px solid var(--line);
+  white-space:nowrap;
+}
+
+/* items, shared between shopping list & group sublists */
+.items{ display:flex; flex-direction:column; }
+.item{
+  display:flex;
+  align-items:flex-start;
+  gap:8px;
+  padding:6px 0;
+  border-bottom:1px solid var(--line);
+  user-select: none;
+}
+.item:last-child{ border-bottom:none; }
+.item input[type="checkbox"]{
+  margin-top:3px;
+  width:16px; height:16px;
+  accent-color:var(--teal);
+  cursor:pointer;
+  flex-shrink:0;
+}
+.item-text{
+  flex:1;
+  outline:none;
+  font-size:14px;
+  line-height:1.4;
+  padding:2px 4px;
+  margin:-2px -4px;
+  border-radius:4px;
+  word-break:break-word;
+}
+.item-text:focus{ background:#fff; }
+
+.item .icon-btn{
+  opacity:0;
+  font-size:14px;
+  transition:opacity .1s;
+}
+.item:hover .icon-btn, .item:focus-within .icon-btn{ opacity:1; }
+
+.category-badge{
+  font-family:var(--font-mono);
+  font-size:11px;
+  padding:3px 9px;
+  border-radius:999px;
+  border:1px solid var(--l0);
+  color:var(--l0);
+  white-space:nowrap;
+  flex-shrink:0;
+}
+
+.empty-hint{
+  color:var(--muted);
+  font-size:13px;
+  font-style:italic;
+  padding:4px 4px 8px;
+}
+
+@media (max-width: 560px){
+  body{ padding:18px 12px 50px; }
+  .card{ padding:18px 16px; }
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script type="module">
+// Import Firebase SDKs
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+// Firebase Configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyDpbn2rukl9yf72rbfzOIhcUcsipvx9fSU",
+  authDomain: "packingplanner-27147.firebaseapp.com",
+  databaseURL: "https://packingplanner-27147-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "packingplanner-27147",
+  storageBucket: "packingplanner-27147.firebasestorage.app",
+  messagingSenderId: "883783146057",
+  appId: "1:883783146057:web:1409eb2e35e66b84b13d98"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const dbRef = ref(db, 'plannerData');
+
+const LABEL_COLORS = ['var(--l0)','var(--l1)','var(--l2)','var(--l3)','var(--l4)','var(--l5)'];
+
+function uid(prefix){
+  return prefix + '_' + Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4);
+}
+
+function defaultData(){
+  return {
+    labels: [
+      { id: 'lbl_blr', name: 'Bangalore', color: 'var(--l3)' },
+      { id: 'lbl_chd', name: 'Chandigarh', color: 'var(--l1)' },
+      { id: 'lbl_buy', name: 'Still need to buy', color: 'var(--amber)' },
+      { id: 'lbl_wear', name: 'Wearables', color: 'var(--l0)' },
+      { id: 'lbl_misc', name: 'Miscellaneous', color: 'var(--l2)' },
+      { id: 'lbl_tech', name: 'Technology', color: 'var(--l5)' },
+      { id: 'lbl_surv', name: 'Survival', color: 'var(--l4)' }
+    ],
+    items: [
+      { id: uid('i'), text: 'Winter Jacket', labelIds: ['lbl_chd', 'lbl_wear', 'lbl_buy'] },
+      { id: uid('i'), text: 'Smartphone Charger', labelIds: ['lbl_blr', 'lbl_tech'] }
+    ]
+  };
+}
+
+let data = { labels: [], items: [] };
+let newItemText = '';
+let newItemLabelIds = ['lbl_buy'];
+let activeContextMenu = null;
+
+// Listen for Realtime Updates from Firebase
+onValue(dbRef, (snapshot) => {
+  const val = snapshot.val();
+  if (val) {
+    // Firebase strips empty arrays, so we must safely default them back to []
+    data = {
+      labels: val.labels || [],
+      items: val.items || []
+    };
+    render();
+  } else {
+    // If database is completely empty, initialize it with default data
+    data = defaultData();
+    save();
+  }
+});
+
+function save(){
+  set(dbRef, data).catch(e => console.error('Could not save data to Firebase', e));
+}
+
+/* Tiny DOM Element builder helper */
+function h(tag, attrs, ...children){
+  const el = document.createElement(tag);
+  attrs = attrs || {};
+  for(const [k, v] of Object.entries(attrs)){
+    if(v == null) continue;
+    if(k === 'class') el.className = v;
+    else if(k === 'style') el.style.cssText = v;
+    else if(k.startsWith('on') && typeof v === 'function') el.addEventListener(k.slice(2).toLowerCase(), v);
+    else el.setAttribute(k, v);
+  }
+  children.flat().forEach(c => {
+    if(c == null) return;
+    if(typeof c === 'string') el.appendChild(document.createTextNode(c));
+    else el.appendChild(c);
+  });
+  return el;
+}
+
+/* Discord Style Right-Click Role Menu */
+function showContextMenu(e, item){
+  e.preventDefault();
+  closeContextMenu();
+
+  const menu = h('div', { class: 'discord-menu', style: `left:${e.clientX}px; top:${e.clientY}px;` });
+  menu.addEventListener('click', (ev) => ev.stopPropagation());
+
+  menu.appendChild(h('div', { class: 'discord-menu-title' }, 'Manage Labels'));
+
+  data.labels.forEach(lbl => {
+    const isActive = item.labelIds.includes(lbl.id);
+    const itemEl = h('div', {
+      class: 'discord-menu-item' + (isActive ? ' active' : ''),
+      onclick: () => {
+        if(isActive){
+          item.labelIds = item.labelIds.filter(id => id !== lbl.id);
+        }else{
+          item.labelIds.push(lbl.id);
+        }
+        save();
+        render();
+        showContextMenu(e, item); // Keeps menu open for fast toggles
+      }
+    },
+      h('div', { class: 'discord-menu-check' }, '✓'),
+      h('div', { class: 'discord-menu-color', style: 'background:' + lbl.color }),
+      h('span', {}, lbl.name)
+    );
+    menu.appendChild(itemEl);
+  });
+
+  document.body.appendChild(menu);
+  activeContextMenu = menu;
+}
+
+function closeContextMenu(){
+  if(activeContextMenu){
+    activeContextMenu.remove();
+    activeContextMenu = null;
+  }
+}
+
+document.addEventListener('click', closeContextMenu);
+
+/* Mutations */
+function addLabel(){
+  const newId = 'cat_' + Math.random().toString(36).slice(2, 9);
+  data.labels.push({ id: newId, name: 'New label', color: LABEL_COLORS[data.labels.length % LABEL_COLORS.length] });
+  save();
+}
+
+function deleteLabel(id){
+  if(!confirm('Delete this label? It will be removed from all items.')) return;
+  data.items.forEach(it => { it.labelIds = it.labelIds.filter(lid => lid !== id); });
+  data.labels = data.labels.filter(lbl => lbl.id !== id);
+  save();
+}
+
+/* Backup and Config File handlers */
+function exportData(){
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'packing-planner-cloud-' + new Date().toISOString().slice(0, 10) + '.json';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function triggerImport(){ document.getElementById('importInput').click(); }
+function importData(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try{
+      const parsed = JSON.parse(reader.result);
+      if(!parsed || !Array.isArray(parsed.labels) || !Array.isArray(parsed.items)) throw new Error();
+      data = parsed; 
+      save(); // This now saves directly to Firebase, updating everyone
+    }catch(err){ alert('Could not read file. Make sure it is a valid backup JSON.'); }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+/* Builders */
+function buildTopbar(){
+  const left = h('div', {},
+    h('h1', {}, 'Packing Planner'),
+    h('p', {}, 'Add items using the unified panel at the top. Right-click any item to manage its labels (Discord-style context role manager) to route items instantly or switch status. The checkbox lives exclusively inside "Still need to buy" and safely drops items off your shopping list.')
+  );
+  const importInput = h('input', { type: 'file', accept: '.json', id: 'importInput', style: 'display:none', onchange: importData });
+  return h('div', { class: 'topbar' }, left, h('div', { class: 'topbar-actions' },
+    h('button', { class: 'btn', onclick: exportData }, 'Export'),
+    h('button', { class: 'btn', onclick: triggerImport }, 'Import'),
+    importInput
+  ));
+}
+
+function buildNewItemCard(){
+  const input = h('input', { id: 'main-input', type: 'text', class: 'add-item-input', placeholder: 'Type item name and press Enter...', value: newItemText });
+  input.addEventListener('input', (e) => { newItemText = e.target.value; });
+  input.addEventListener('keydown', (e) => {
+    if(e.key === 'Enter'){
+      e.preventDefault();
+      const text = newItemText.trim();
+      if(!text) return;
+      data.items.push({ id: uid('i'), text: text, labelIds: [...newItemLabelIds] });
+      newItemText = '';
+      save();
+    }
+  });
+
+  const chips = data.labels.map(lbl => {
+    const isActive = newItemLabelIds.includes(lbl.id);
+    return h('button', {
+      class: 'add-chip-toggle' + (isActive ? ' active' : ''),
+      style: isActive ? 'border-left: 4px solid ' + lbl.color : '',
+      onclick: () => {
+        if(isActive) newItemLabelIds = newItemLabelIds.filter(id => id !== lbl.id);
+        else newItemLabelIds.push(lbl.id);
+        render();
+        document.getElementById('main-input').focus();
+      }
+    }, (isActive ? '✓ ' : '+ ') + lbl.name);
+  });
+
+  return h('div', { class: 'card' },
+    h('div', { class: 'labels-title', style: 'margin-bottom:12px;' }, 'Add New Item'),
+    h('div', { class: 'add-item-card-row' }, input),
+    h('div', { class: 'add-item-labels-title' }, 'Assign Initial Labels'),
+    h('div', { class: 'add-item-labels-row' }, chips)
+  );
+}
+
+function buildShoppingItem(item){
+  const checkbox = h('input', { type: 'checkbox', title: 'Mark as bought' });
+  checkbox.checked = false;
+  checkbox.addEventListener('change', () => {
+    item.labelIds = item.labelIds.filter(id => id !== 'lbl_buy');
+    save();
+  });
+
+  const textEl = h('div', { class: 'item-text', contenteditable: 'true' }, item.text);
+  textEl.addEventListener('blur', () => { item.text = textEl.textContent.trim() || 'Untitled item'; save(); });
+  textEl.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); textEl.blur(); } });
+
+  const badges = item.labelIds.filter(id => id !== 'lbl_buy' && id !== 'lbl_blr' && id !== 'lbl_chd').map(id => {
+    const lbl = data.labels.find(l => l.id === id);
+    if(!lbl) return null;
+    return h('span', { class: 'category-badge', style: `border-color:${lbl.color}; color:${lbl.color}; margin-right:4px;` }, lbl.name);
+  });
+
+  const delBtn = h('button', { class: 'icon-btn', title: 'Delete completely', onclick: () => { data.items = data.items.filter(i => i.id !== item.id); save(); } }, '\u2715');
+
+  return h('div', { class: 'item', oncontextmenu: (e) => showContextMenu(e, item) }, checkbox, textEl, h('div', { style: 'display:flex;align-items:center;' }, badges), delBtn);
+}
+
+function buildShoppingList(){
+  const pending = data.items.filter(it => it.labelIds.includes('lbl_buy'));
+  const body = pending.length === 0
+    ? h('div', { class: 'empty-hint' }, 'Nothing left to buy.')
+    : h('div', { class: 'shopping-sections' }, h('div', { class: 'items' }, pending.map(buildShoppingItem)));
+
+  return h('div', { class: 'card accent-amber' },
+    h('div', { class: 'card-head' },
+      h('h2', { class: 'card-title' }, 'Still need to buy'),
+      h('span', { class: 'progress-pill amber' }, pending.length + (pending.length === 1 ? ' item' : ' items'))
+    ),
+    body
+  );
+}
+
+function buildLabelsCard(){
+  const chips = data.labels.map((lbl, idx) => {
+    const isCore = ['lbl_blr', 'lbl_chd', 'lbl_buy'].includes(lbl.id);
+    const nameEl = h('div', { class: 'label-name', contenteditable: isCore ? 'false' : 'true' }, lbl.name);
+    nameEl.addEventListener('blur', () => { lbl.name = nameEl.textContent.trim() || 'Untitled label'; save(); });
+    nameEl.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); nameEl.blur(); } });
+
+    const del = isCore ? null : h('button', { class: 'chip-del', title: 'Delete label', onclick: () => deleteLabel(lbl.id) }, '\u2715');
+    return h('div', { class: 'label-chip', style: 'border-left-color:' + lbl.color }, nameEl, del);
+  });
+
+  return h('div', { class: 'card' },
+    h('div', { class: 'labels-title' }, 'Labels'),
+    h('div', { class: 'labels-row' }, chips, h('button', { class: 'add-label-btn', onclick: addLabel }, '+ Add label'))
+  );
+}
+
+function buildLocationGroupItem(item){
+  const textEl = h('div', { class: 'item-text', contenteditable: 'true' }, item.text);
+  textEl.addEventListener('blur', () => { item.text = textEl.textContent.trim() || 'Untitled item'; save(); });
+  textEl.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); textEl.blur(); } });
+
+  const delBtn = h('button', { class: 'icon-btn', title: 'Delete completely', onclick: () => { data.items = data.items.filter(i => i.id !== item.id); save(); } }, '\u2715');
+
+  return h('div', { class: 'item', oncontextmenu: (e) => showContextMenu(e, item) }, textEl, delBtn);
+}
+
+function buildLocationCard(title, locLabelId){
+  const locItems = data.items.filter(it => it.labelIds.includes(locLabelId));
+  const total = locItems.length;
+  const packedCount = locItems.filter(it => !it.labelIds.includes('lbl_buy')).length;
+
+  const head = h('div', { class: 'card-head' },
+    h('h2', { class: 'card-title' }, title),
+    h('span', { class: 'progress-pill' }, packedCount + ' / ' + total + ' packed/bought')
+  );
+
+  const subCategories = data.labels.filter(lbl => lbl.id !== 'lbl_blr' && lbl.id !== 'lbl_chd' && lbl.id !== 'lbl_buy');
+
+  const sublistsRow = h('div', { class: 'sublists' },
+    subCategories.map((cat, idx) => {
+      const sublistItems = locItems.filter(it => it.labelIds.includes(cat.id));
+      const itemsWrap = sublistItems.length === 0
+        ? h('div', { class: 'items' }, h('div', { class: 'empty-hint' }, 'Nothing here yet'))
+        : h('div', { class: 'items' }, sublistItems.map(buildLocationGroupItem));
+
+      return h('div', { class: 'sublist', style: 'border-left-color:' + LABEL_COLORS[idx % LABEL_COLORS.length] },
+        h('div', { class: 'sublist-head' },
+          h('div', { class: 'sublist-title' }, cat.name),
+          h('span', { class: 'count-badge' }, String(sublistItems.length))
+        ),
+        itemsWrap
+      );
+    })
+  );
+
+  return h('div', { class: 'card accent-teal group-card' }, head, sublistsRow);
+}
+
+/* Master Layout Sync Execution */
+function render(){
+  // To avoid interrupting typing in the main input during a remote update,
+  // we check if it's currently focused and restore focus after drawing
+  const activeEl = document.activeElement;
+  const isMainInputFocused = activeEl && activeEl.id === 'main-input';
+
+  const app = document.getElementById('app');
+  app.innerHTML = '';
+  app.appendChild(buildTopbar());
+
+  const page = h('div', { class: 'page' });
+  page.appendChild(buildNewItemCard());
+  page.appendChild(buildShoppingList());
+  page.appendChild(buildLabelsCard());
+  
+  /* Routes automatically based on label properties */
+  page.appendChild(buildLocationCard('Needs to be carried from Bangalore', 'lbl_blr'));
+  page.appendChild(buildLocationCard('Needs to be bought from Chandigarh', 'lbl_chd'));
+  
+  app.appendChild(page);
+
+  // Restore focus to keep typing smooth during live edits
+  if (isMainInputFocused) {
+    const mainInput = document.getElementById('main-input');
+    if (mainInput) mainInput.focus();
+  }
+}
+
+// Initial render is no longer called here; it waits for Firebase's first onValue push
+</script>
+</body>
+</html>
